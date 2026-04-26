@@ -65,7 +65,7 @@ a {
   align-items: center;
   justify-content: space-between;
   min-height: 56px;
-  margin-bottom: 26px;
+  margin-bottom: 14px;
 }
 
 .brand {
@@ -118,6 +118,7 @@ a {
 }
 
 .status-pill,
+.bookmark-reminder,
 .icon-link,
 .icon-button,
 .secondary-button,
@@ -139,6 +140,38 @@ a {
   background: rgba(255, 255, 255, 0.04);
   color: #d9d1ea;
   font-size: 0.86rem;
+}
+
+.bookmark-reminder {
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 46px;
+  margin-bottom: 18px;
+  padding: 0 14px;
+  border: 1px solid rgba(99, 214, 164, 0.28);
+  border-radius: 8px;
+  background: rgba(99, 214, 164, 0.08);
+  color: #e8fff4;
+}
+
+.bookmark-reminder > span {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.bookmark-reminder strong {
+  white-space: nowrap;
+}
+
+.bookmark-reminder span span {
+  min-width: 0;
+  overflow: hidden;
+  color: #b7d9c8;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .icon-link,
@@ -557,6 +590,21 @@ button:disabled {
 
   .status-pill {
     display: none;
+  }
+
+  .bookmark-reminder {
+    min-height: auto;
+    padding: 12px;
+  }
+
+  .bookmark-reminder > span {
+    display: block;
+  }
+
+  .bookmark-reminder span span {
+    display: block;
+    margin-top: 3px;
+    white-space: normal;
   }
 
   .input-panel,

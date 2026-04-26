@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { readFile, stat } from "node:fs/promises";
 
 const CAST_URL = "https://farcaster.xyz/icetoad.eth/0x8ad59e91";
@@ -9,10 +9,8 @@ test("resolves and downloads the Icetoad Farcaster HLS video", async ({
   test.setTimeout(240_000);
   await page.goto("/");
 
-  await page
-    .getByPlaceholder("https://farcaster.xyz/user/0x...")
-    .fill(CAST_URL);
-  await page.getByRole("button", { name: "Analyze" }).click();
+  await expect(page.getByText("Bookmark fcdl.net")).toBeVisible();
+  await pasteUrl(page, CAST_URL);
 
   const assetCard = page
     .locator(".asset-card")
@@ -60,17 +58,38 @@ test("publishes a large-card Open Graph preview", async ({ page, request }) => {
   );
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
     "content",
-    "https://fcdl.net/og.svg",
+    "https://fcdl.net/og.png",
+  );
+  await expect(page.locator('meta[property="og:image:type"]')).toHaveAttribute(
+    "content",
+    "image/png",
   );
   await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
     "content",
     "summary_large_image",
   );
 
-  const preview = await request.get("/og.svg");
+  const preview = await request.get("/og.png");
   expect(preview.ok()).toBeTruthy();
-  expect(await preview.text()).toContain("Farcaster video downloader");
+  expect(preview.headers()["content-type"]).toContain("image/png");
+  expect((await preview.body()).byteLength).toBeGreaterThan(20_000);
 });
+
+async function pasteUrl(page: Page, url: string): Promise<void> {
+  await page
+    .getByPlaceholder("https://farcaster.xyz/user/0x...")
+    .evaluate((textarea, value) => {
+      const data = new DataTransfer();
+      data.setData("text/plain", value);
+      textarea.dispatchEvent(
+        new ClipboardEvent("paste", {
+          bubbles: true,
+          cancelable: true,
+          clipboardData: data,
+        }),
+      );
+    }, url);
+}
 
 function countAscii(buffer: Buffer, value: string): number {
   const needle = Buffer.from(value);

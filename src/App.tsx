@@ -1,6 +1,14 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ClipboardEvent,
+  type ReactNode,
+} from "react";
 import {
   AlertCircle,
+  Bookmark,
   CheckCircle2,
   Clipboard,
   Download,
@@ -43,6 +51,8 @@ function App() {
   const [isResolving, setIsResolving] = useState(false);
   const [jobs, setJobs] = useState<Record<string, DownloadJob>>({});
   const aborters = useRef<Record<string, AbortController>>({});
+  const resolveRunId = useRef(0);
+  const autoAnalyzeTimer = useRef<number | null>(null);
 
   const activeDownloads = useMemo(
     () =>
@@ -52,25 +62,41 @@ function App() {
     [jobs],
   );
 
-  async function analyze() {
-    if (!input.trim()) {
+  async function analyze(value = input) {
+    clearAutoAnalyzeTimer();
+    const query = value.trim();
+    if (!query) {
       setNotes([{ tone: "error", text: "Paste a URL first." }]);
       return;
     }
 
+    const runId = resolveRunId.current + 1;
+    resolveRunId.current = runId;
     setIsResolving(true);
     setResolveProgress({ label: "Starting", progress: 0 });
     setNotes([]);
 
     try {
-      const result = await resolveInput(input, setResolveProgress);
+      const result = await resolveInput(query, (progress) => {
+        if (resolveRunId.current === runId) {
+          setResolveProgress(progress);
+        }
+      });
+      if (resolveRunId.current !== runId) {
+        return;
+      }
       setAssets(result.assets);
       setNotes(result.notes);
     } catch (error) {
+      if (resolveRunId.current !== runId) {
+        return;
+      }
       setNotes([{ tone: "error", text: readError(error) }]);
       setAssets([]);
     } finally {
-      setIsResolving(false);
+      if (resolveRunId.current === runId) {
+        setIsResolving(false);
+      }
     }
   }
 
@@ -78,8 +104,42 @@ function App() {
     try {
       const value = await navigator.clipboard.readText();
       setInput(value);
+      queueAutoAnalyze(value);
     } catch (error) {
       setNotes([{ tone: "error", text: readError(error) }]);
+    }
+  }
+
+  function handleInputChange(event: ChangeEvent<HTMLTextAreaElement>) {
+    setInput(event.target.value);
+  }
+
+  function handlePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const value = event.clipboardData.getData("text/plain");
+    if (!shouldAutoAnalyze(value)) {
+      return;
+    }
+
+    event.preventDefault();
+    setInput(value);
+    queueAutoAnalyze(value);
+  }
+
+  function queueAutoAnalyze(value: string) {
+    if (!shouldAutoAnalyze(value)) {
+      return;
+    }
+
+    clearAutoAnalyzeTimer();
+    autoAnalyzeTimer.current = window.setTimeout(() => {
+      void analyze(value);
+    }, 80);
+  }
+
+  function clearAutoAnalyzeTimer() {
+    if (autoAnalyzeTimer.current !== null) {
+      window.clearTimeout(autoAnalyzeTimer.current);
+      autoAnalyzeTimer.current = null;
     }
   }
 
@@ -136,11 +196,14 @@ function App() {
   function clearAll() {
     Object.values(aborters.current).forEach((controller) => controller.abort());
     aborters.current = {};
+    clearAutoAnalyzeTimer();
+    resolveRunId.current += 1;
     setInput("");
     setAssets([]);
     setNotes([]);
     setJobs({});
     setResolveProgress(null);
+    setIsResolving(false);
   }
 
   return (
@@ -171,6 +234,14 @@ function App() {
         </div>
       </header>
 
+      <div className="bookmark-reminder" role="note">
+        <Bookmark size={17} />
+        <span>
+          <strong>Bookmark fcdl.net</strong>
+          <span>Keep it handy for quick Farcaster video saves.</span>
+        </span>
+      </div>
+
       <section className="workspace">
         <div className="input-panel">
           <div className="panel-heading">
@@ -191,7 +262,8 @@ function App() {
 
           <textarea
             value={input}
-            onChange={(event) => setInput(event.target.value)}
+            onChange={handleInputChange}
+            onPaste={handlePaste}
             placeholder="https://farcaster.xyz/user/0x..."
             spellCheck={false}
           />
@@ -205,7 +277,7 @@ function App() {
               className="primary-button"
               type="button"
               disabled={isResolving}
-              onClick={analyze}
+              onClick={() => void analyze()}
             >
               {isResolving ? <LoaderCircle className="spin" size={18} /> : <Search size={18} />}
               Analyze
@@ -405,6 +477,19 @@ function EmptyState({ icon, title }: { icon: ReactNode; title: string }) {
 
 function readError(error: unknown): string {
   return error instanceof Error ? error.message : "Unexpected error";
+}
+
+function shouldAutoAnalyze(value: string): boolean {
+  const url = value.trim().match(/https?:\/\/\S+/i)?.[0] ?? "";
+  if (!url) {
+    return false;
+  }
+
+  return (
+    /https?:\/\/(?:www\.)?(?:farcaster\.xyz|warpcast\.com|farcaster\.tv)\//i.test(
+      url,
+    ) || /\.(?:m3u8|mp4|m4v|mov|webm)(?:[?#\s]|$)/i.test(url)
+  );
 }
 
 export default App;
