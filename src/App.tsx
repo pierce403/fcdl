@@ -87,6 +87,11 @@ function App() {
       }
       setAssets(result.assets);
       setNotes(result.notes);
+
+      const autoDownloadAsset = result.assets[0];
+      if (autoDownloadAsset && !jobs[autoDownloadAsset.id]) {
+        void startDownload(autoDownloadAsset);
+      }
     } catch (error) {
       if (resolveRunId.current !== runId) {
         return;
