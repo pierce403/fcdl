@@ -405,10 +405,12 @@ function MediaCard({
     asset.cast?.username ? `@${asset.cast.username}` : null,
   ].filter(Boolean);
 
+  const showPoster = Boolean(asset.poster) && asset.sourceLabel !== "Farcaster Open Graph";
+
   return (
     <article className="asset-card">
       <div className="preview">
-        {asset.poster ? (
+        {showPoster ? (
           <img src={asset.poster} alt="" />
         ) : asset.kind === "direct" ? (
           <video src={asset.url} muted playsInline preload="metadata" />
