@@ -18,3 +18,9 @@ npm run build
 ```
 
 The production build is static. The `dist` output can be deployed directly to GitHub Pages; the custom domain is configured through `public/CNAME`.
+
+## Tests
+
+```bash
+npm run test:e2e
+```

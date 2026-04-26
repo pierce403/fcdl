@@ -59,7 +59,14 @@ interface FarcasterTvCast {
       width?: number;
       height?: number;
     }>;
-    urls?: unknown[];
+    urls?: Array<{
+      openGraph?: {
+        url?: string;
+        sourceUrl?: string;
+        title?: string;
+        image?: string;
+      };
+    }>;
     unknowns?: unknown[];
   };
 }
@@ -224,18 +231,32 @@ async function resolveFarcasterPointer(
     )
     .filter((asset): asset is MediaAsset => Boolean(asset));
 
+  const openGraphAssets = (cast.embeds?.urls ?? [])
+    .map((embed, index) =>
+      createMediaAsset(embed.openGraph?.sourceUrl ?? embed.openGraph?.url ?? "", {
+        title: titleFromCast(cast, videoAssets.length + index),
+        sourceLabel: "Farcaster Open Graph",
+        poster: embed.openGraph?.image || undefined,
+        cast: castMeta,
+      }),
+    )
+    .filter((asset): asset is MediaAsset => Boolean(asset));
+
   const deepUrls = extractMediaUrls(JSON.stringify(cast));
   const deepAssets = deepUrls
     .map((url, index) =>
       createMediaAsset(url, {
-        title: titleFromCast(cast, videoAssets.length + index),
+        title: titleFromCast(
+          cast,
+          videoAssets.length + openGraphAssets.length + index,
+        ),
         sourceLabel: "Farcaster metadata",
         cast: castMeta,
       }),
     )
     .filter((asset): asset is MediaAsset => Boolean(asset));
 
-  const assets = [...videoAssets, ...deepAssets];
+  const assets = [...videoAssets, ...openGraphAssets, ...deepAssets];
 
   return {
     assets: dedupeAssets(assets),

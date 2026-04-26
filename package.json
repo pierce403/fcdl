@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "tsc -b --noEmit"
+    "lint": "tsc -b --noEmit",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.10",
@@ -20,6 +21,7 @@
     "vite": "^7.1.9"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
     "typescript": "^5.9.3"

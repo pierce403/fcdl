@@ -42,6 +42,11 @@ interface PlaylistResource {
   name: string;
 }
 
+interface FetchedText {
+  text: string;
+  url: string;
+}
+
 export async function prepareHlsInput(
   manifestUrl: string,
   id: string,
@@ -49,13 +54,13 @@ export async function prepareHlsInput(
   signal?: AbortSignal,
 ): Promise<PreparedHlsInput> {
   onProgress?.({ label: "Reading HLS manifest", progress: 0.04 });
-  const manifestText = await fetchText(manifestUrl, signal);
-  const master = parseMasterPlaylist(manifestText, manifestUrl);
+  const manifest = await fetchText(manifestUrl, signal);
+  const master = parseMasterPlaylist(manifest.text, manifest.url);
 
   if (master.variants.length === 0) {
     const prepared = await prepareMediaPlaylist(
-      manifestText,
-      manifestUrl,
+      manifest.text,
+      manifest.url,
       `${id}-media`,
       0.08,
       0.82,
@@ -71,14 +76,14 @@ export async function prepareHlsInput(
   }
 
   const variant = selectBestVariant(master.variants);
-  const variantUrl = new URL(variant.uri, manifestUrl).toString();
+  const variantUrl = new URL(variant.uri, manifest.url).toString();
   const audio = selectAudioRendition(master.renditions, variant.audioGroupId);
 
   onProgress?.({ label: "Preparing video stream", progress: 0.08 });
-  const videoText = await fetchText(variantUrl, signal);
+  const videoManifest = await fetchText(variantUrl, signal);
   const video = await prepareMediaPlaylist(
-    videoText,
-    variantUrl,
+    videoManifest.text,
+    videoManifest.url,
     `${id}-video`,
     0.1,
     audio?.uri ? 0.46 : 0.78,
@@ -89,11 +94,11 @@ export async function prepareHlsInput(
   let audioPlaylist: PreparedPlaylist | undefined;
   if (audio?.uri) {
     onProgress?.({ label: "Preparing audio stream", progress: 0.58 });
-    const audioUrl = new URL(audio.uri, manifestUrl).toString();
-    const audioText = await fetchText(audioUrl, signal);
+    const audioUrl = new URL(audio.uri, manifest.url).toString();
+    const audioManifest = await fetchText(audioUrl, signal);
     audioPlaylist = await prepareMediaPlaylist(
-      audioText,
-      audioUrl,
+      audioManifest.text,
+      audioManifest.url,
       `${id}-audio`,
       0.58,
       0.3,
@@ -329,12 +334,12 @@ function stripQuotes(value: string): string {
   return value.startsWith('"') && value.endsWith('"') ? value.slice(1, -1) : value;
 }
 
-async function fetchText(url: string, signal?: AbortSignal): Promise<string> {
+async function fetchText(url: string, signal?: AbortSignal): Promise<FetchedText> {
   const response = await fetch(url, { signal });
   if (!response.ok) {
     throw new Error(`Could not fetch ${url}: ${response.status}`);
   }
-  return response.text();
+  return { text: await response.text(), url: response.url || url };
 }
 
 async function fetchBytes(url: string, signal?: AbortSignal): Promise<Uint8Array> {
