@@ -1,5 +1,5 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { toBlobURL } from "@ffmpeg/util";
+import { prepareFmp4HlsDownload, type Fmp4Download } from "./fmp4";
 import { prepareHlsInput } from "./hls";
 import type { MediaAsset } from "./media";
 
@@ -59,6 +59,48 @@ async function downloadHlsAsset(
 ): Promise<void> {
   const jobId = `${asset.id}-${Date.now().toString(36)}`;
 
+  onProgress?.({ phase: "preparing", label: "Checking HLS stream", progress: 0.02 });
+  let fmp4Download: Fmp4Download | null = null;
+  try {
+    fmp4Download = await prepareFmp4HlsDownload(
+      asset.url,
+      (progress) => {
+        onProgress?.({
+          phase: "preparing",
+          label: progress.label,
+          progress: Math.min(0.94, progress.progress),
+        });
+      },
+      signal,
+    );
+  } catch (error) {
+    if (signal?.aborted) {
+      throw error;
+    }
+    onProgress?.({ phase: "muxing", label: "Using FFmpeg fallback", progress: 0.02 });
+  }
+
+  if (fmp4Download) {
+    onProgress?.({
+      phase: "saving",
+      label: `Saving ${fmp4Download.label}`,
+      progress: 0.96,
+    });
+    saveBlob(fmp4Download.blob, asset.filename);
+    onProgress?.({ phase: "complete", label: "Complete", progress: 1 });
+    return;
+  }
+
+  onProgress?.({ phase: "muxing", label: "Loading FFmpeg core", progress: 0.02 });
+  const ffmpeg = await getFfmpeg((progress) => {
+    onProgress?.({
+      phase: "muxing",
+      label: progress.label,
+      progress: 0.02 + progress.progress * 0.16,
+    });
+  });
+
+  signal?.throwIfAborted();
   onProgress?.({ phase: "preparing", label: "Preparing HLS", progress: 0.02 });
   const prepared = await prepareHlsInput(
     asset.url,
@@ -67,7 +109,7 @@ async function downloadHlsAsset(
       onProgress?.({
         phase: "preparing",
         label: progress.label,
-        progress: Math.min(progress.progress * 0.7, 0.7),
+        progress: 0.2 + Math.min(progress.progress * 0.5, 0.5),
       });
     },
     signal,
@@ -77,13 +119,6 @@ async function downloadHlsAsset(
     phase: "muxing",
     label: `Loading muxer for ${prepared.label}`,
     progress: 0.72,
-  });
-  const ffmpeg = await getFfmpeg((progress) => {
-    onProgress?.({
-      phase: "muxing",
-      label: progress.label,
-      progress: 0.72 + progress.progress * 0.12,
-    });
   });
 
   signal?.throwIfAborted();
@@ -143,12 +178,12 @@ async function getFfmpeg(
   if (!ffmpegPromise) {
     ffmpegPromise = (async () => {
       const ffmpeg = new FFmpeg();
-      const coreBaseUrl = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm";
+      const coreBaseUrl = new URL("/vendor/ffmpeg/", window.location.href);
 
       onProgress?.({ label: "Loading FFmpeg core", progress: 0.15 });
       await ffmpeg.load({
-        coreURL: await toBlobURL(`${coreBaseUrl}/ffmpeg-core.js`, "text/javascript"),
-        wasmURL: await toBlobURL(`${coreBaseUrl}/ffmpeg-core.wasm`, "application/wasm"),
+        coreURL: new URL("ffmpeg-core.js", coreBaseUrl).toString(),
+        wasmURL: new URL("ffmpeg-core.wasm", coreBaseUrl).toString(),
       });
       onProgress?.({ label: "FFmpeg ready", progress: 1 });
 
