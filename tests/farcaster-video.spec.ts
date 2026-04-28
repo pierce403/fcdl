@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Download, type Page } from "@playwright/test";
 import { readFile, stat } from "node:fs/promises";
 
 const CAST_URL = "https://farcaster.xyz/icetoad.eth/0x8ad59e91";
@@ -10,16 +10,6 @@ test("resolves and downloads the Icetoad Farcaster HLS video", async ({
   await page.goto("/");
 
   await expect(page.getByText("Bookmark fcdl.net")).toBeVisible();
-  await pasteUrl(page, CAST_URL);
-
-  const assetCard = page
-    .locator(".asset-card")
-    .filter({ hasText: "icetoad-eth-0x8ad59e91.mp4" });
-
-  await expect(assetCard).toBeVisible();
-  await expect(assetCard).toContainText("Farcaster Open Graph");
-  await expect(assetCard).toContainText("HLS to MP4");
-
   const childPlaylistResponse = page.waitForResponse(
     (response) =>
       response.ok() &&
@@ -29,8 +19,15 @@ test("resolves and downloads the Icetoad Farcaster HLS video", async ({
   );
 
   const downloadPromise = page.waitForEvent("download", { timeout: 210_000 });
+  await pasteUrl(page, CAST_URL);
 
-  await assetCard.getByRole("button", { name: "Download" }).click();
+  const assetCard = page
+    .locator(".asset-card")
+    .filter({ hasText: "icetoad-eth-0x8ad59e91.mp4" });
+
+  await expect(assetCard).toBeVisible();
+  await expect(assetCard).toContainText("Farcaster Open Graph");
+  await expect(assetCard).toContainText("HLS to MP4");
   await childPlaylistResponse;
   await expect(page.getByText(/Failed|Could not fetch/i)).toHaveCount(0);
 
@@ -47,6 +44,30 @@ test("resolves and downloads the Icetoad Farcaster HLS video", async ({
   expect(countAscii(mp4, "trak")).toBeGreaterThanOrEqual(2);
 
   await expect(page.getByText("Complete")).toBeVisible();
+  await expect(assetCard.getByRole("button", { name: "Done" })).toBeDisabled();
+});
+
+test("auto-downloads every video resolved from one cast", async ({ page }) => {
+  const downloads: Download[] = [];
+  page.on("download", (download) => downloads.push(download));
+  await routeMultiVideoCast(page);
+  await page.goto("/");
+
+  await pasteUrl(page, "https://farcaster.xyz/multi.eth/0xabcdef");
+
+  await expect(page.locator(".asset-card")).toHaveCount(2);
+  await expect(page.getByText("2 found")).toBeVisible();
+  await expect
+    .poll(() => downloads.map((download) => download.suggestedFilename()).sort(), {
+      timeout: 15_000,
+    })
+    .toEqual(["multi-eth-0xabcdef-2.mp4", "multi-eth-0xabcdef.mp4"]);
+
+  for (const download of downloads) {
+    const path = await download.path();
+    expect(path).toBeTruthy();
+    expect((await stat(path!)).size).toBeGreaterThan(8);
+  }
 });
 
 test("publishes a large-card Open Graph preview", async ({ page, request }) => {
@@ -89,6 +110,59 @@ async function pasteUrl(page: Page, url: string): Promise<void> {
         }),
       );
     }, url);
+}
+
+async function routeMultiVideoCast(page: Page): Promise<void> {
+  await page.route("https://farcaster.tv/multi.eth/0xabcdef", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      headers: { "access-control-allow-origin": "*" },
+      json: {
+        result: {
+          casts: [
+            {
+              hash: "0xabcdef",
+              text: "two videos",
+              author: {
+                displayName: "Multi",
+                username: "multi.eth",
+              },
+              embeds: {
+                videos: [
+                  {
+                    sourceUrl: "http://127.0.0.1:5173/fixtures/clip-one.mp4",
+                    thumbnailUrl: "",
+                    width: 640,
+                    height: 360,
+                  },
+                  {
+                    sourceUrl: "http://127.0.0.1:5173/fixtures/clip-two.mp4",
+                    thumbnailUrl: "",
+                    width: 640,
+                    height: 360,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  await page.route("http://127.0.0.1:5173/fixtures/clip-one.mp4", async (route) => {
+    await route.fulfill({
+      contentType: "video/mp4",
+      body: Buffer.from("fake mp4 clip one"),
+    });
+  });
+
+  await page.route("http://127.0.0.1:5173/fixtures/clip-two.mp4", async (route) => {
+    await route.fulfill({
+      contentType: "video/mp4",
+      body: Buffer.from("fake mp4 clip two"),
+    });
+  });
 }
 
 function countAscii(buffer: Buffer, value: string): number {

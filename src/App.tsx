@@ -38,6 +38,10 @@ interface DownloadJob {
   error?: string;
 }
 
+interface AnalyzeOptions {
+  autoDownload?: boolean;
+}
+
 const SAMPLE_URL =
   "https://stream.mux.com/DK00RCfk76exuq2ggfVsnV1ULP9ujkUvLz01Je8dED202g.m3u8";
 
@@ -52,6 +56,8 @@ function App() {
   const [jobs, setJobs] = useState<Record<string, DownloadJob>>({});
   const aborters = useRef<Record<string, AbortController>>({});
   const resolveRunId = useRef(0);
+  const downloadRunId = useRef(0);
+  const startedDownloads = useRef<Set<string>>(new Set());
   const autoAnalyzeTimer = useRef<number | null>(null);
 
   const activeDownloads = useMemo(
@@ -62,7 +68,8 @@ function App() {
     [jobs],
   );
 
-  async function analyze(value = input) {
+  async function analyze(value = input, options: AnalyzeOptions = {}) {
+    const { autoDownload = true } = options;
     clearAutoAnalyzeTimer();
     const query = value.trim();
     if (!query) {
@@ -72,8 +79,10 @@ function App() {
 
     const runId = resolveRunId.current + 1;
     resolveRunId.current = runId;
+    const downloadRun = resetDownloadQueue();
     setIsResolving(true);
     setResolveProgress({ label: "Starting", progress: 0 });
+    setAssets([]);
     setNotes([]);
 
     try {
@@ -87,10 +96,8 @@ function App() {
       }
       setAssets(result.assets);
       setNotes(result.notes);
-
-      const autoDownloadAsset = result.assets[0];
-      if (autoDownloadAsset && !jobs[autoDownloadAsset.id]) {
-        void startDownload(autoDownloadAsset);
+      if (autoDownload && result.assets.length > 0) {
+        void startDownloads(result.assets, downloadRun);
       }
     } catch (error) {
       if (resolveRunId.current !== runId) {
@@ -137,7 +144,7 @@ function App() {
 
     clearAutoAnalyzeTimer();
     autoAnalyzeTimer.current = window.setTimeout(() => {
-      void analyze(value);
+      void analyze(value, { autoDownload: true });
     }, 80);
   }
 
@@ -148,7 +155,21 @@ function App() {
     }
   }
 
-  async function startDownload(asset: MediaAsset) {
+  async function startDownloads(nextAssets: MediaAsset[], runId: number) {
+    for (const asset of nextAssets) {
+      if (downloadRunId.current !== runId) {
+        return;
+      }
+      await startDownload(asset, runId);
+    }
+  }
+
+  async function startDownload(asset: MediaAsset, runId = downloadRunId.current) {
+    if (startedDownloads.current.has(asset.id)) {
+      return;
+    }
+
+    startedDownloads.current.add(asset.id);
     const controller = new AbortController();
     aborters.current[asset.id] = controller;
 
@@ -166,6 +187,9 @@ function App() {
       await downloadAsset(
         asset,
         (progress) => {
+          if (downloadRunId.current !== runId) {
+            return;
+          }
           setJobs((current) => ({
             ...current,
             [asset.id]: {
@@ -179,6 +203,10 @@ function App() {
         controller.signal,
       );
     } catch (error) {
+      if (downloadRunId.current !== runId) {
+        return;
+      }
+      startedDownloads.current.delete(asset.id);
       setJobs((current) => ({
         ...current,
         [asset.id]: {
@@ -190,7 +218,9 @@ function App() {
         },
       }));
     } finally {
-      delete aborters.current[asset.id];
+      if (aborters.current[asset.id] === controller) {
+        delete aborters.current[asset.id];
+      }
     }
   }
 
@@ -199,16 +229,24 @@ function App() {
   }
 
   function clearAll() {
-    Object.values(aborters.current).forEach((controller) => controller.abort());
-    aborters.current = {};
     clearAutoAnalyzeTimer();
     resolveRunId.current += 1;
+    resetDownloadQueue();
     setInput("");
     setAssets([]);
     setNotes([]);
     setJobs({});
     setResolveProgress(null);
     setIsResolving(false);
+  }
+
+  function resetDownloadQueue(): number {
+    downloadRunId.current += 1;
+    Object.values(aborters.current).forEach((controller) => controller.abort());
+    aborters.current = {};
+    startedDownloads.current.clear();
+    setJobs({});
+    return downloadRunId.current;
   }
 
   return (
@@ -252,7 +290,7 @@ function App() {
           <div className="panel-heading">
             <div>
               <p className="eyebrow">URL</p>
-              <h1>Find the video</h1>
+              <h1>Paste to download</h1>
             </div>
             <button
               className="icon-button"
@@ -282,7 +320,7 @@ function App() {
               className="primary-button"
               type="button"
               disabled={isResolving}
-              onClick={() => void analyze()}
+              onClick={() => void analyze(input, { autoDownload: true })}
             >
               {isResolving ? <LoaderCircle className="spin" size={18} /> : <Search size={18} />}
               Analyze
@@ -404,6 +442,8 @@ function MediaCard({
   onDownload: () => void;
 }) {
   const isBusy = job && !["complete", "error"].includes(job.phase);
+  const isComplete = job?.phase === "complete";
+  const isError = job?.phase === "error";
   const meta = [
     asset.container.toUpperCase(),
     asset.width && asset.height ? `${asset.width}x${asset.height}` : null,
@@ -437,9 +477,20 @@ function MediaCard({
 
         <div className="asset-footer">
           <span>{meta.join(" / ")}</span>
-          <button className="primary-button small" type="button" disabled={Boolean(isBusy)} onClick={onDownload}>
-            {isBusy ? <LoaderCircle className="spin" size={17} /> : <Download size={17} />}
-            Download
+          <button
+            className="primary-button small"
+            type="button"
+            disabled={Boolean(isBusy) || isComplete}
+            onClick={onDownload}
+          >
+            {isBusy ? (
+              <LoaderCircle className="spin" size={17} />
+            ) : isComplete ? (
+              <CheckCircle2 size={17} />
+            ) : (
+              <Download size={17} />
+            )}
+            {isBusy ? "Downloading" : isComplete ? "Done" : isError ? "Retry" : "Download"}
           </button>
         </div>
       </div>
