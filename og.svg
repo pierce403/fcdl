@@ -1,0 +1,54 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#120F1A"/>
+  <path d="M0 0H1200V630H0V0Z" fill="url(#page)"/>
+
+  <rect x="64" y="54" width="1072" height="522" rx="26" fill="#1A1623" stroke="#3A314B" stroke-width="2"/>
+  <path d="M64 138H1136" stroke="#2B2438" stroke-width="2"/>
+
+  <rect x="94" y="82" width="64" height="64" rx="14" fill="#7C65C1"/>
+  <text x="113" y="130" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="900">f</text>
+  <text x="178" y="122" fill="#F4F1FF" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="850">fcdl</text>
+  <text x="333" y="122" fill="#AFA4C6" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="600">Farcaster video downloader</text>
+
+  <rect x="887" y="86" width="142" height="42" rx="21" fill="#241E30" stroke="#3A314B"/>
+  <circle cx="912" cy="107" r="7" fill="#63D6A4"/>
+  <text x="929" y="116" fill="#EFEAFF" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="750">browser-only</text>
+
+  <text x="94" y="248" fill="#F4F1FF" font-family="Inter, Arial, sans-serif" font-size="62" font-weight="850">Paste a cast URL.</text>
+  <text x="94" y="323" fill="#F4F1FF" font-family="Inter, Arial, sans-serif" font-size="62" font-weight="850">Save the video.</text>
+  <text x="96" y="386" fill="#B7ACC9" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="500">HLS and split audio/video handled in-browser.</text>
+
+  <rect x="96" y="452" width="172" height="50" rx="10" fill="#231D2F" stroke="#3A314B"/>
+  <text x="120" y="484" fill="#F4F1FF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">fcdl.net</text>
+  <rect x="286" y="452" width="176" height="50" rx="10" fill="#15121D" stroke="#3A314B"/>
+  <path d="M317 466V489M307 476H327" stroke="#63D6A4" stroke-width="4" stroke-linecap="round"/>
+  <text x="342" y="484" fill="#D8D1EA" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="700">static HTML</text>
+
+  <rect x="672" y="166" width="398" height="340" rx="18" fill="#100D16" stroke="#3A314B" stroke-width="2"/>
+  <rect x="704" y="198" width="334" height="52" rx="10" fill="#1F1A2B" stroke="#3A314B"/>
+  <text x="726" y="231" fill="#C9C0DA" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="650">farcaster.xyz/user/0x...</text>
+
+  <rect x="704" y="278" width="334" height="142" rx="12" fill="#1A1623" stroke="#3A314B"/>
+  <rect x="727" y="301" width="118" height="96" rx="10" fill="#271F37"/>
+  <path d="M775 327L819 349L775 371V327Z" fill="#9B7CFF"/>
+  <text x="867" y="329" fill="#63D6A4" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="800">1 video found</text>
+  <text x="867" y="363" fill="#F4F1FF" font-family="Inter, Arial, sans-serif" font-size="27" font-weight="800">HLS to MP4</text>
+  <text x="867" y="393" fill="#AFA4C6" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="600">@farcaster</text>
+
+  <rect x="704" y="448" width="207" height="24" rx="12" fill="#29213A"/>
+  <rect x="704" y="448" width="154" height="24" rx="12" fill="url(#bar)"/>
+  <rect x="930" y="436" width="108" height="48" rx="10" fill="#7C65C1"/>
+  <text x="952" y="468" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="850">Save</text>
+
+  <defs>
+    <linearGradient id="page" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#302549"/>
+      <stop offset=".42" stop-color="#15121D"/>
+      <stop offset="1" stop-color="#10171A"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="704" y1="460" x2="858" y2="460" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9B7CFF"/>
+      <stop offset="1" stop-color="#72D9F5"/>
+    </linearGradient>
+  </defs>
+</svg>
