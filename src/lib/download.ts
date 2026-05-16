@@ -1,4 +1,5 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { buildMuxArgs } from "./ffmpegArgs";
 import { prepareHlsInput } from "./hls";
 import type { MediaAsset } from "./media";
 
@@ -118,25 +119,6 @@ async function downloadHlsAsset(
   onProgress?.({ phase: "complete", label: "Complete", progress: 1 });
 
   await cleanupFiles(ffmpeg, [...prepared.files.map((file) => file.name), outputName]);
-}
-
-function buildMuxArgs(
-  videoPlaylist: string,
-  audioPlaylist: string | undefined,
-  outputName: string,
-): string[] {
-  const inputFlags = ["-protocol_whitelist", "file,crypto,data", "-allowed_extensions", "ALL"];
-  const args = ["-hide_banner", "-y", ...inputFlags, "-i", videoPlaylist];
-
-  if (audioPlaylist) {
-    args.push(...inputFlags, "-i", audioPlaylist);
-    args.push("-map", "0:v:0", "-map", "1:a:0?", "-c", "copy");
-  } else {
-    args.push("-c", "copy");
-  }
-
-  args.push("-movflags", "+faststart", outputName);
-  return args;
 }
 
 async function getFfmpeg(
