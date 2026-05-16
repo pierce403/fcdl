@@ -10,14 +10,6 @@ test("resolves and downloads the Icetoad Farcaster HLS video", async ({
   await page.goto("/");
 
   await expect(page.getByText("Bookmark fcdl.net")).toBeVisible();
-  const childPlaylistResponse = page.waitForResponse(
-    (response) =>
-      response.ok() &&
-      response.url().includes("cloudflarestream.com") &&
-      /\/manifest\/stream_.*\.m3u8/.test(response.url()),
-    { timeout: 75_000 },
-  );
-
   const downloadPromise = page.waitForEvent("download", { timeout: 210_000 });
   await pasteUrl(page, CAST_URL);
 
@@ -28,7 +20,6 @@ test("resolves and downloads the Icetoad Farcaster HLS video", async ({
   await expect(assetCard).toBeVisible();
   await expect(assetCard).toContainText("Farcaster Open Graph");
   await expect(assetCard).toContainText("HLS to MP4");
-  await childPlaylistResponse;
   await expect(page.getByText(/Failed|Could not fetch/i)).toHaveCount(0);
 
   const download = await downloadPromise;
@@ -42,6 +33,9 @@ test("resolves and downloads the Icetoad Farcaster HLS video", async ({
   expect(mp4.includes(Buffer.from("avc1"))).toBeTruthy();
   expect(mp4.includes(Buffer.from("mp4a"))).toBeTruthy();
   expect(countAscii(mp4, "trak")).toBeGreaterThanOrEqual(2);
+  const boxTypes = topLevelBoxTypes(mp4);
+  expect(boxTypes.filter((type) => type === "moof")).toHaveLength(0);
+  expect(boxTypes.filter((type) => type === "mdat")).toHaveLength(1);
 
   await expect(page.getByText("Complete")).toBeVisible();
   await expect(assetCard.getByRole("button", { name: "Done" })).toBeDisabled();
@@ -176,4 +170,34 @@ function countAscii(buffer: Buffer, value: string): number {
   }
 
   return count;
+}
+
+function topLevelBoxTypes(buffer: Buffer): string[] {
+  const types: string[] = [];
+  let offset = 0;
+
+  while (offset + 8 <= buffer.byteLength) {
+    let size = buffer.readUInt32BE(offset);
+    const type = buffer.toString("ascii", offset + 4, offset + 8);
+    let headerSize = 8;
+
+    if (size === 1) {
+      if (offset + 16 > buffer.byteLength) {
+        break;
+      }
+      size = Number(buffer.readBigUInt64BE(offset + 8));
+      headerSize = 16;
+    }
+    if (size === 0) {
+      size = buffer.byteLength - offset;
+    }
+    if (size < headerSize || offset + size > buffer.byteLength) {
+      break;
+    }
+
+    types.push(type);
+    offset += size;
+  }
+
+  return types;
 }

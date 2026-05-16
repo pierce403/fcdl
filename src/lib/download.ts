@@ -1,5 +1,4 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { prepareFmp4HlsDownload, type Fmp4Download } from "./fmp4";
 import { prepareHlsInput } from "./hls";
 import type { MediaAsset } from "./media";
 
@@ -58,38 +57,6 @@ async function downloadHlsAsset(
   signal?: AbortSignal,
 ): Promise<void> {
   const jobId = `${asset.id}-${Date.now().toString(36)}`;
-
-  onProgress?.({ phase: "preparing", label: "Checking HLS stream", progress: 0.02 });
-  let fmp4Download: Fmp4Download | null = null;
-  try {
-    fmp4Download = await prepareFmp4HlsDownload(
-      asset.url,
-      (progress) => {
-        onProgress?.({
-          phase: "preparing",
-          label: progress.label,
-          progress: Math.min(0.94, progress.progress),
-        });
-      },
-      signal,
-    );
-  } catch (error) {
-    if (signal?.aborted) {
-      throw error;
-    }
-    onProgress?.({ phase: "muxing", label: "Using FFmpeg fallback", progress: 0.02 });
-  }
-
-  if (fmp4Download) {
-    onProgress?.({
-      phase: "saving",
-      label: `Saving ${fmp4Download.label}`,
-      progress: 0.96,
-    });
-    saveBlob(fmp4Download.blob, asset.filename);
-    onProgress?.({ phase: "complete", label: "Complete", progress: 1 });
-    return;
-  }
 
   onProgress?.({ phase: "muxing", label: "Loading FFmpeg core", progress: 0.02 });
   const ffmpeg = await getFfmpeg((progress) => {
