@@ -1,0 +1,1 @@
+import {mkdirSync} from 'node:fs';import{execFileSync}from'node:child_process';mkdirSync('.wrangler',{recursive:true});execFileSync('node_modules/.bin/wrangler',['types','.wrangler/env.d.ts'],{stdio:'inherit'});execFileSync('node_modules/.bin/tsc',['--project','tsconfig.worker.json','--noEmit'],{stdio:'inherit'});

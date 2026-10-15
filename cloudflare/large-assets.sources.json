@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "/vendor/ffmpeg/ffmpeg-core.wasm",
+      "source": "public/vendor/ffmpeg/ffmpeg-core.wasm",
+      "contentType": "application/wasm"
+    }
+  ]
+}

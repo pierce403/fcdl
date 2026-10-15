@@ -6,3 +6,7 @@ test-results
 .DS_Store
 *.local
 *.tsbuildinfo
+
+# Native Cloudflare generated output
+.wrangler/
+cloudflare/large-assets.generated.json

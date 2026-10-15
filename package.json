@@ -8,7 +8,11 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "tsc -b --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build:cloudflare": "npm run build && node scripts/cloudflare-assets.mjs && node cloudflare/split-large-assets.mjs && node cloudflare/check-types.mjs",
+    "test:hosting": "node cloudflare/verify-large-asset.mjs",
+    "deploy": "wrangler deploy",
+    "check:deploy": "npm run build:cloudflare && wrangler deploy --dry-run"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.10",
@@ -23,6 +27,7 @@
     "@playwright/test": "^1.59.1",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
-    "typescript": "^5.9.3"
+    "typescript": "5.9.3",
+    "wrangler": "4.151.0"
   }
 }

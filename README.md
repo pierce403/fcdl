@@ -24,3 +24,12 @@ The production build is static. The `dist` output can be deployed directly to Gi
 ```bash
 npm run test:e2e
 ```
+
+## Cloudflare hosting
+
+Native main builds run npm ci, npm run build:cloudflare, npm run test:hosting,
+and npm run deploy. Credentials remain in Cloudflare and previews stay disabled.
+The existing Pages recovery and original frontend build are preserved. The large
+/vendor/ffmpeg/ffmpeg-core.wasm file keeps its original URL, bytes and MIME; a typed
+Worker streams generated content-addressed16MiBchunks with Range/HEAD/CORS support.
+Usage is measured through zone requests without browser analytics.

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "lib": [
+      "ES2022"
+    ]
+  },
+  "include": [
+    "cloudflare/*.ts",
+    ".wrangler/env.d.ts"
+  ]
+}
